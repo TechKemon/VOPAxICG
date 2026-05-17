@@ -17,6 +17,7 @@ class Settings:
     hf_model_id: str
     request_timeout_seconds: int
     retry_attempts: int
+    api_key: str | None = None
 
 
 def load_settings() -> Settings:
@@ -28,6 +29,7 @@ def load_settings() -> Settings:
         hf_model_id=os.getenv("HF_MODEL_ID", "Qwen/Qwen3.5-35B-A3B"),
         request_timeout_seconds=int(os.getenv("HF_TIMEOUT_SECONDS", "30")),
         retry_attempts=int(os.getenv("HF_RETRY_ATTEMPTS", "2")),
+        api_key=_clean_token(os.getenv("MYCA_API_KEY")),
     )
 
 

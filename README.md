@@ -7,6 +7,7 @@ This project recommends MYCA mental-health courses from a user profile and optio
 - `POST /v1/recommendations` for production integration.
 - `GET /v1/courses` for the current course catalog.
 - `GET /health` for service readiness.
+- Browser docs at `/docs`, with `/` redirecting there.
 - A Streamlit demo in `Demo_app.py`.
 - A CLI smoke test in `main.py`.
 - An evaluation script that compares predicted course ids with `myca_eval_dataset.csv`.
@@ -24,6 +25,7 @@ This project recommends MYCA mental-health courses from a user profile and optio
 ```bash
 curl -X POST http://localhost:8000/v1/recommendations \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: change_this_api_key" \
   -d '{
     "profile": {
       "feelings": ["anxious"],
@@ -49,14 +51,21 @@ Create `.env` if you want LLM persona enrichment:
 ```bash
 HF_TOKEN=hf_your_token
 HF_MODEL_ID=Qwen/Qwen3.5-35B-A3B
+MYCA_API_KEY=change_this_api_key
 ```
 
-The system still works without `HF_TOKEN`; it simply uses the profile/chat fallback.
+The system still works without `HF_TOKEN`; it simply uses the profile/chat fallback. If `MYCA_API_KEY` is set, `/v1/courses` and `/v1/recommendations` require the `X-API-Key` header. Use the **Authorize** button in `/docs` to set it once while testing.
 
 ## Run
 
 ```bash
 uvicorn myca_recsys.api:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
 ```
 
 ```bash

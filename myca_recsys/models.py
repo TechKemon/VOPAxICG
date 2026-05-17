@@ -22,10 +22,10 @@ class Course(BaseModel):
 
 
 class UserProfile(BaseModel):
-    feelings: list[str] = Field(default_factory=list)
-    challenges: list[str] = Field(default_factory=list)
-    goals: list[str] = Field(default_factory=list)
-    risk_signals: list[str] = Field(default_factory=list)
+    feelings: list[str] = Field(default_factory=list, examples=[["anxious", "overwhelmed"]])
+    challenges: list[str] = Field(default_factory=list, examples=[["exam pressure", "fear of failure"]])
+    goals: list[str] = Field(default_factory=list, examples=[["manage stress"]])
+    risk_signals: list[str] = Field(default_factory=list, examples=[[]])
 
     @field_validator("feelings", "challenges", "goals", "risk_signals", mode="before")
     @classmethod
@@ -43,7 +43,10 @@ class Persona(UserProfile):
 
 class RecommendationRequest(BaseModel):
     profile: UserProfile = Field(default_factory=UserProfile)
-    chat_history: str | None = None
+    chat_history: str | None = Field(
+        default=None,
+        examples=["I am scared about exams and keep comparing myself with classmates."],
+    )
     top_n: int = Field(default=3, ge=1, le=20)
 
     @model_validator(mode="after")
@@ -59,6 +62,21 @@ class RecommendationRequest(BaseModel):
         if not has_profile and not (self.chat_history and self.chat_history.strip()):
             raise ValueError("profile or chat_history is required")
         return self
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "profile": {
+                    "feelings": ["anxious"],
+                    "challenges": ["exam pressure", "fear of failure"],
+                    "goals": ["manage stress"],
+                    "risk_signals": [],
+                },
+                "chat_history": "I am scared about exams and marks.",
+                "top_n": 3,
+            }
+        }
+    )
 
 
 class ScoreBreakdown(BaseModel):
