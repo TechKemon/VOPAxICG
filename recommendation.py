@@ -46,7 +46,7 @@ def run_recommendation(user_chat_history: str):
 
     # 2. Setup API
     API_URL = "https://router.huggingface.co/v1/chat/completions"
-    MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
+    MODEL_ID = "Qwen/Qwen3.5-35B-A3B"
 
     headers = {
         "Authorization": f"Bearer {HF_TOKEN}",
