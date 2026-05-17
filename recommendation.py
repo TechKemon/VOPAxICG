@@ -93,6 +93,8 @@ def run_recommendation(user_chat_history: str):
         ],
         "max_tokens": 1024,
         "temperature": 0.1,
+        "chat_template_kwargs": {"enable_thinking": False},  # disables think block
+        "response_format": {"type": "json_object"},
         "stream": False
     }
 

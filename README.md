@@ -1,7 +1,7 @@
 ```markdown
 # VOPAxICG: AI Student Advisor & Course Recommender
 
-This project is an AI-powered student advisor system that analyzes a user's chat history to detect emotional states (stress, anxiety) and challenges (workload, time management). Based on this analysis, it generates a psychological "persona" and recommends the top 3 most relevant courses from a database using the **Qwen-2.5-72B-Instruct** LLM via Hugging Face.
+This project is an AI-powered student advisor system that analyzes a user's chat history to detect emotional states (stress, anxiety) and challenges (workload, time management). Based on this analysis, it generates a psychological "persona" and recommends the top 3 most relevant courses from a database using the **Qwen3.5-35B-A3B** LLM via Hugging Face.
 
 ## 📂 Project Structure
 

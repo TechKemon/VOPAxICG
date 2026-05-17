@@ -31,7 +31,7 @@ with st.sidebar:
         st.info("Please set your API token in your environment variables.")
     
     st.markdown("---")
-    st.caption("Powered by Qwen-2.5-72B-Instruct")
+    st.caption("Powered by Qwen3.5-35B-A3B")
 
 # --- MAIN INPUT ---
 st.subheader("1. Input Student Conversation")
