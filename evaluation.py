@@ -1,79 +1,93 @@
-import pandas as pd
-import sys
-import os
+from __future__ import annotations
+
+import csv
+import logging
 from pathlib import Path
 
-# --- 1. DYNAMIC PATH SETUP ---
-# This finds the folder where THIS file lives
-project_folder = Path(__file__).resolve().parent
+import pandas as pd
 
-# Make sure Python can find 'recommendation.py' in this folder
-if str(project_folder) not in sys.path:
-    sys.path.append(str(project_folder))
+from myca_recsys.models import RecommendationRequest, UserProfile
+from myca_recsys.service import RecommendationEngine
 
-from recommendation import run_recommendation
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
-def run_evaluation():
-    # --- 2. DEFINE FILE PATHS AUTOMATICALLY ---
-    # Look for the input file inside the project folder
-    input_csv = project_folder / "myca_eval_dataset.csv"
-    output_csv = project_folder / "myca_new_dataset.csv"
+PROJECT_FOLDER = Path(__file__).resolve().parent
+INPUT_CSV = PROJECT_FOLDER / "myca_eval_dataset.csv"
+OUTPUT_CSV = PROJECT_FOLDER / "myca_eval_results.csv"
 
-    print(f"📂 Project Folder: {project_folder}")
-    print(f"🔍 Looking for input file at: {input_csv}")
+TITLE_TO_ID = {
+    "emotional first aid": "C001",
+    "understanding emotions": "C002",
+    "understanding your emotions": "C002",
+    "addiction awareness": "C003",
+    "sexuality education": "C004",
+    "exploring the mind": "C005",
+    "suicide prevention": "C006",
+    "suicide prevention (gkt program)": "C006",
+    "teachers' mental health": "C007",
+    "youth mental health": "C008",
+}
 
-    # --- 3. SAFETY CHECK ---
-    if not input_csv.exists():
-        print("\n❌ ERROR: Input file not found!")
-        print(f"Please move 'myca_eval_dataset.csv' into this folder: {project_folder}")
+
+def run_evaluation() -> None:
+    if not INPUT_CSV.exists():
+        raise FileNotFoundError(f"Missing evaluation dataset: {INPUT_CSV}")
+
+    engine = RecommendationEngine()
+    df = pd.read_csv(INPUT_CSV)
+    rows = []
+    top1_hits = 0
+    top3_hits = 0
+
+    for _, row in df.iterrows():
+        text = _combined_text(row)
+        expected_id = _expected_course_id(str(row.get("recommendation (8 courses)", "")))
+        response = engine.recommend(RecommendationRequest(profile=_profile_from_row(row), chat_history=text, top_n=3))
+        predicted_ids = [item.id for item in response.recommendations]
+        top1_hits += int(bool(predicted_ids) and predicted_ids[0] == expected_id)
+        top3_hits += int(expected_id in predicted_ids)
+        rows.append(
+            {
+                "id": row.get("id"),
+                "expected_course_id": expected_id,
+                "predicted_course_ids": ",".join(predicted_ids),
+                "top1_hit": bool(predicted_ids) and predicted_ids[0] == expected_id,
+                "top3_hit": expected_id in predicted_ids,
+                "safety_is_crisis": response.safety.is_crisis,
+                "message": response.model_dump_json(),
+            }
+        )
+
+    _write_results(rows)
+    total = max(len(rows), 1)
+    logger.info("Wrote %s", OUTPUT_CSV)
+    logger.info("Top-1 accuracy: %.2f", top1_hits / total)
+    logger.info("Top-3 accuracy: %.2f", top3_hits / total)
+
+
+def _combined_text(row) -> str:
+    return f"{row.get('context', '')}\n{row.get('conversation', '')}".strip()
+
+
+def _profile_from_row(row) -> UserProfile:
+    modules = str(row.get("modules (opt)", ""))
+    return UserProfile(challenges=[item.strip() for item in modules.split(",") if item.strip()])
+
+
+def _expected_course_id(label: str) -> str:
+    normalized = label.split("(")[0].strip().lower()
+    return TITLE_TO_ID.get(normalized, "")
+
+
+def _write_results(rows: list[dict]) -> None:
+    if not rows:
         return
+    with OUTPUT_CSV.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
 
-    print("✅ File found! Starting evaluation...")
-
-    # --- 4. RUN EVALUATION ---
-    try:
-        df = pd.read_csv(input_csv)
-        
-        results = []
-        messages = []
-
-        # Loop through each row
-        print(f"⏳ Processing {len(df)} rows...")
-        for idx, row in df.iterrows():
-            # Combine context and conversation safely
-            context = str(row.get("context", ""))
-            conversation = str(row.get("conversation", ""))
-            text = f"{context}\n{conversation}"
-
-            # Run your AI Logic
-            # We use a try-except here so one bad row doesn't crash the whole script
-            try:
-                data, final_msg = run_recommendation(text)
-                
-                # Extract recommendations list safely
-                recs = data.get("recommendations", []) if data else []
-                results.append(recs)
-                messages.append(final_msg)
-                
-                # Optional: Print a dot for every row processed so you know it's working
-                print(".", end="", flush=True)
-
-            except Exception as e:
-                print(f"⚠️ Error on row {idx}: {e}")
-                results.append([])
-                messages.append("Error processing this row.")
-
-        print("\n✅ Processing complete.")
-
-        # Save Results
-        df["model_recommendations"] = results
-        df["model_message"] = messages
-
-        df.to_csv(output_csv, index=False)
-        print(f"🎉 Success! Results saved to: {output_csv}")
-
-    except Exception as e:
-        print(f"❌ CRITICAL ERROR: {e}")
 
 if __name__ == "__main__":
     run_evaluation()

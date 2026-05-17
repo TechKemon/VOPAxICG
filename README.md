@@ -1,105 +1,78 @@
-```markdown
-# VOPAxICG: AI Student Advisor & Course Recommender
+# VOPAxICG: MYCA Hybrid Course Recommender
 
-This project is an AI-powered student advisor system that analyzes a user's chat history to detect emotional states (stress, anxiety) and challenges (workload, time management). Based on this analysis, it generates a psychological "persona" and recommends the top 3 most relevant courses from a database using the **Qwen3.5-35B-A3B** LLM via Hugging Face.
+This project recommends MYCA mental-health courses from a user profile and optional chat history. It now uses a hybrid design: the LLM can enrich the persona, but deterministic scoring owns the final course ranking so results are easier to test, debug, and trust.
 
-## 📂 Project Structure
+## What It Provides
 
-```text
-VOPAxICG/
-├── course_list.py       # Database of available courses (JSON format)
-├── main.py              # Entry point for backend testing (CLI)
-├── recommendation.py    # Core logic (API communication & Prompt Engineering)
-├── evaluation.py        # Scripts for batch testing and metrics
-├── Demo_app.py          # Streamlit Web Application (Frontend)
-├── requirements.txt     # List of python dependencies
-├── .env                 # (Ignored by Git) Stores your API Key safely
-└── .gitignore           # Specifies files to exclude from git
+- `POST /v1/recommendations` for production integration.
+- `GET /v1/courses` for the current course catalog.
+- `GET /health` for service readiness.
+- A Streamlit demo in `Demo_app.py`.
+- A CLI smoke test in `main.py`.
+- An evaluation script that compares predicted course ids with `myca_eval_dataset.csv`.
 
-```
+## Recommendation Flow
 
-## 🚀 Installation & Setup
+1. MYCA sends a structured profile and optional chat history.
+2. If `HF_TOKEN` is available, the Hugging Face model extracts or enriches the persona.
+3. If the model fails or no token is configured, the system falls back to the supplied profile and chat summary.
+4. The deterministic ranker scores courses using keywords, descriptions, domain terms, stopwords, and safety signals.
+5. Crisis or self-harm signals trigger a safety flag and boost the suicide-prevention course while still returning recommendations.
 
-### 1. Prerequisites
-
-* **Python 3.8** or higher.
-* A **Hugging Face Account** & **API Token** ([Get one here](https://huggingface.co/settings/tokens)).
-
-### 2. Clone the Repository
+## API Example
 
 ```bash
-git clone [https://github.com/ic1ic2/VOPAxICG.git](https://github.com/ic1ic2/VOPAxICG.git)
-cd VOPAxICG
-
+curl -X POST http://localhost:8000/v1/recommendations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile": {
+      "feelings": ["anxious"],
+      "challenges": ["exam pressure", "fear of failure"],
+      "goals": ["manage stress"],
+      "risk_signals": []
+    },
+    "chat_history": "I am scared about exams and marks.",
+    "top_n": 3
+  }'
 ```
 
-### 3. Create & Activate Virtual Environment
-
-**Windows:**
+## Setup
 
 ```bash
-python -m venv venv
-venv\Scripts\activate
-
-```
-
-**Mac / Linux:**
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-
-```
-
-### 4. Install Dependencies
-
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
 ```
 
-### 5. Setup API Keys (Important!)
-
-You must create a `.env` file to store your Hugging Face token.
-**Run this specific command** in your terminal to create the file correctly (avoids Windows encoding errors):
-
-*(Replace `hf_YOUR_ACTUAL_TOKEN` with your real key)*
+Create `.env` if you want LLM persona enrichment:
 
 ```bash
-python -c "with open('.env', 'w', encoding='utf-8') as f: f.write('HF_TOKEN=hf_YOUR_ACTUAL_TOKEN')"
-
+HF_TOKEN=hf_your_token
+HF_MODEL_ID=Qwen/Qwen3.5-35B-A3B
 ```
 
----
+The system still works without `HF_TOKEN`; it simply uses the profile/chat fallback.
 
-## 🖥️ Usage
+## Run
 
-### Option A: Run the Web App (Recommended)
-
-Launch the interactive dashboard to chat with the AI advisor.
+```bash
+uvicorn myca_recsys.api:app --reload
+```
 
 ```bash
 streamlit run Demo_app.py
-
 ```
-
-* The app will open automatically in your browser.
-* **To Stop:** Press `Ctrl + C` in the terminal.
-
-### Option B: Run Backend Test
-
-Test the recommendation logic directly in the terminal without the UI.
 
 ```bash
 python main.py
-
 ```
-
-### Option C: Run Evaluation
-
-Run the batch processing script to evaluate performance on multiple user personas.
 
 ```bash
 python evaluation.py
+```
 
+## Test
+
+```bash
+pytest
 ```
